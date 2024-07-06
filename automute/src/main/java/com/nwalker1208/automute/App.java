@@ -31,10 +31,10 @@ public class App {
       System.err.println("Failed to read CSV file.");
       return;
     }
+    transcription = MergeLines(transcription);
 
-    System.out.printf("Found %d lines of text.\n", transcription.length);
     TranscriptionLine[] linesToFilter = FindLinesToFilter(transcription);
-    System.out.printf("%d lines match filters.\n", linesToFilter.length);
+    System.out.printf("%d audio segments match filters.\n", linesToFilter.length);
     
     System.out.println("Filtering audio from input file...");
     if (!FilterAudio("video.mp4", linesToFilter)) {
@@ -101,6 +101,26 @@ public class App {
       return null;
     }
     return lines.toArray(new TranscriptionLine[lines.size()]);
+  }
+
+  public static TranscriptionLine[] MergeLines(TranscriptionLine[] lines) {
+    List<TranscriptionLine> mergedLines = new ArrayList<>();
+    TranscriptionLine prev = null;
+    for (TranscriptionLine line : lines) {
+      if (line.text.startsWith(" ") && prev != null) {
+        mergedLines.add(prev);
+        prev = null;
+      }
+      if (prev != null) {
+        prev = new TranscriptionLine(prev.startMs, line.endMs, prev.text + line.text);
+      } else {
+        prev = line;
+      }
+    }
+    if (prev != null) {
+      mergedLines.add(prev);
+    }
+    return mergedLines.toArray(new TranscriptionLine[mergedLines.size()]);
   }
 
   public static Pattern[] filters = {
