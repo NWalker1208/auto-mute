@@ -124,6 +124,7 @@ public class App {
   }
 
   public static Pattern[] filters = {
+    // For testing with the "The Missile Knows Where It Is" video.
     Pattern.compile("missile", Pattern.CASE_INSENSITIVE)
   };
 
@@ -152,6 +153,7 @@ public class App {
       } else {
         first = false;
       }
+      // See https://stackoverflow.com/a/29222419
       audioFilterArgBuilder.append(String.format("volume=enable='between(t,%.3f,%.3f)':volume=0", line.startMs / 1000.0d, line.endMs / 1000.0d));
     }
     String audioFilterArgument = audioFilterArgBuilder.toString();
