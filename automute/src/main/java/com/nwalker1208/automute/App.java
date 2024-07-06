@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
@@ -30,6 +31,16 @@ public class App {
     }
 
     System.out.printf("Found %d lines of text.\n", transcription.length);
+    TranscriptionLine[] linesToFilter = FindLinesToFilter(transcription);
+    System.out.printf("%d lines match filters.\n", linesToFilter.length);
+    
+    System.out.println("Filtering audio from input file...");
+    if (!FilterAudio("video.mp4", linesToFilter)) {
+      System.err.println("Failed to filter input file.");
+      return;
+    }
+
+    System.out.println("Finished");
   }
 
   public static boolean ExtractAudio(String inputFile) {
@@ -88,6 +99,27 @@ public class App {
       return null;
     }
     return lines.toArray(new TranscriptionLine[lines.size()]);
+  }
+
+  public static Pattern[] filters = {
+    Pattern.compile("missile", Pattern.CASE_INSENSITIVE)
+  };
+
+  public static TranscriptionLine[] FindLinesToFilter(TranscriptionLine[] lines) {
+    List<TranscriptionLine> linesToFilter = new ArrayList<>();
+    for (TranscriptionLine line : lines) {
+      for (Pattern pattern : filters) {
+        if (pattern.matcher(line.text).find()) {
+          linesToFilter.add(line);
+          break;
+        }
+      }
+    }
+    return linesToFilter.toArray(new TranscriptionLine[linesToFilter.size()]);
+  }
+
+  public static boolean FilterAudio(String inputFile, TranscriptionLine[] linesToFilter) {
+    return false;
   }
 }
 
