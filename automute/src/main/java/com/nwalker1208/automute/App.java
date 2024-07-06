@@ -2,6 +2,8 @@ package com.nwalker1208.automute;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -119,7 +121,31 @@ public class App {
   }
 
   public static boolean FilterAudio(String inputFile, TranscriptionLine[] linesToFilter) {
-    return false;
+    Path inputPath = Paths.get(inputFile).toAbsolutePath();
+    String outputFile = inputPath.getParent().resolve("filtered-" + inputPath.getFileName()).toString();
+
+    StringBuilder audioFilterArgBuilder = new StringBuilder();
+    boolean first = true;
+    for (TranscriptionLine line : linesToFilter) {
+      if (!first) {
+        audioFilterArgBuilder.append(", ");
+      } else {
+        first = false;
+      }
+      audioFilterArgBuilder.append(String.format("volume=enable='between(t,%.3f,%.3f)':volume=0", line.startMs / 1000.0d, line.endMs / 1000.0d));
+    }
+    String audioFilterArgument = audioFilterArgBuilder.toString();
+
+    try {
+      ProcessBuilder builder = new ProcessBuilder(
+        "ffmpeg", "-y", "-i", inputFile, "-vcodec", "copy", "-af", audioFilterArgument, outputFile
+      );
+      builder.inheritIO();
+      Process p = builder.start();
+      return p.waitFor() == 0;
+    } catch (IOException | InterruptedException e) {
+      return false;
+    }
   }
 }
 
