@@ -1,8 +1,8 @@
 import ffmpeg
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment, Word
-import re
 from tqdm import tqdm
+import argparse, re, os, pathlib
 
 def extract_audio(input_file: str, output_file: str):
   """Extracts the audio component of the input file at the sample rate required by Whisper."""
@@ -62,16 +62,37 @@ def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word])
   stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
 
-FILTERS = [
-  re.compile("missile", re.IGNORECASE)
-]
+def get_output_file_path(input_file: str) -> str:
+  """Creates an output file path from an input file path."""
+  input_path = pathlib.Path(input_file)
+  return str(input_path.with_stem(input_path.stem + "-filtered"))
 
 def main():
-  extract_audio("video.mp4", "audio.wav")
+  parser = argparse.ArgumentParser(
+    prog='automute',
+    description='A command-line tool for automatically muting specific words from audio and video files.'
+  )
+  parser.add_argument('input-file',
+                      help='Audio or video file to apply filters to.')
+  parser.add_argument('-o', '--output',
+                      help='Name of the output file. (Default: <input file>-filtered.<extension>)')
+  parser.add_argument('-w', '--filter-word', default=[], action='append',
+                      help="A word to filter out. Treated as a case-insensitive regular expression. Can be specified multiple times.")
+  # parser.add_argument('-l', '--filter-lines',
+  #                     help="A file of words to filter out. Each line is treated as a case-insentive regular expression.")
+  args = parser.parse_args()
+  
+  input_file = args.input_file
+  output_file = args.output if args.output is not None else get_output_file_path(input_file)
+  filters = [re.compile(word, re.IGNORECASE) for word in args.filter_word]
+
+  extract_audio(input_file, "audio.wav")
   segments = transcribe_audio("audio.wav")
+  os.remove("audio.wav")
+
   words = get_words(segments)
-  filtered_words = filter_words(words, FILTERS)
-  filter_audio("video.mp4", "filtered-video.mp4", filtered_words)
+  filtered_words = filter_words(words, filters)
+  filter_audio(input_file, output_file, filtered_words)
 
 if __name__ == "__main__":
   main()
