@@ -2,6 +2,7 @@ import ffmpeg
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment, Word
 import re
+from tqdm import tqdm
 
 def extract_audio(input_file: str, output_file: str):
   """Extracts the audio component of the input file at the sample rate required by Whisper."""
@@ -16,11 +17,21 @@ def transcribe_audio(input_file: str, model_name: str = "small.en") -> list[Segm
     model_size_or_path = model_name,
     compute_type = "float32"
   )
-  segments, _ = model.transcribe(
+  segments, info = model.transcribe(
     audio = input_file,
     word_timestamps = True
   )
-  return list(segments)
+  total_duration = round(info.duration, 2)
+
+  # https://github.com/SYSTRAN/faster-whisper/issues/80#issuecomment-1502174272
+  segments_list = []
+  with tqdm(desc="Transcribing audio", total=total_duration, unit=" seconds") as progress:
+    for segment in segments:
+      progress.update(segment.end - progress.n)
+      segments_list.append(segment)
+    progress.update(total_duration - progress.n)
+
+  return segments_list
 
 def get_words(segments: list[Segment]) -> list[Word]:
   """Flattens a list of transcription segments into a list of transcribed words."""
