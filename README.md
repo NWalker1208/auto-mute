@@ -4,13 +4,13 @@ A command-line tool to automatically mute specific words from audio and video fi
 
 Uses OpenAI Whisper to transcribe audio and ffmpeg to apply filters.
 
+
 ## Usage
 
-Currently only tested on WSL.
+> :warning: Currently only tested in WSL.
 
-Before running the program, you must run `make` in the whisper.cpp directory.
+Right now, `automute.py` just uses hard-coded paths for the input and output files. It expects there to be a `video.mp4` file in the working directory, and it will output a `filtered-video.mp4` file. I plan to make this much more flexible in the future.
 
-Right now, the program just uses hard-coded paths for the input and output files. It expects there to be a `video.mp4` file in the working directory, and it will output a `filtered-video.mp4` file. I plan to make this much more flexible in the future.
 
 ## To-Do
 
@@ -22,7 +22,9 @@ Right now, the program just uses hard-coded paths for the input and output files
 - Avoid writing intermediate files to disk, or at least keep them in a temp directory.
 - Avoid re-extracting/transcribing audio if the input file hasn't changed.
 
+
 ## To-Done
+
 - Get more accurate word-level timestamps.
   - The whisper library's "word timestamps" option seems to work better than the token-level timestamps I get from whisper.cpp. This option uses "the cross-attention pattern and dynamic time warping."
   - In theory, whisper.cpp's built-in dtw option should provide similar output, but I haven't been able to get this feature to work. See ggerganov/whisper.cpp#2301.
