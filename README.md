@@ -1,8 +1,8 @@
 # auto-mute
 
-A command-line tool to automatically mute specific words from audio and video files. Currently just a proof-of-concept. Originally intended for the censoring of profanity, but I've tried to make it a bit more general purpose.
+A command-line tool to automatically mute specific words from audio and video files. Currently just a proof-of-concept. Originally intended for censoring profanity, but I've tried to make it a bit more general purpose.
 
-Uses ffmpeg and OpenAI Whisper (via whisper.cpp).
+Uses OpenAI Whisper to transcribe audio and ffmpeg to apply filters.
 
 ## Usage
 

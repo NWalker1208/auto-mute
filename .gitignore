@@ -1,4 +1,2 @@
-/*.bin
-/*.mp4
-/*.wav
-/*.csv
+/models
+/media
