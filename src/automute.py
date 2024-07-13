@@ -37,6 +37,15 @@ def get_words(segments: list[Segment]) -> list[Word]:
   """Flattens a list of transcription segments into a list of transcribed words."""
   return [word for segment in segments for word in segment.words]
 
+def encipher(s: str) -> str:
+  """Enciphers a given string by applying a simple caesar cipher.
+  This lets users choose to avoid having profanity in human-readable form."""
+  # This array can be modified for other languages.
+  ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+  return ''.join([(c if c not in ALPHABET else
+                   ALPHABET[(ALPHABET.index(c)-1) % len(ALPHABET)])
+                  for c in s.lower()])
+
 def matches_any(s: str, filters: list[re.Pattern]) -> bool:
   """Checks if the given string matches any pattern from the given list."""
   for filter in filters:
@@ -44,9 +53,10 @@ def matches_any(s: str, filters: list[re.Pattern]) -> bool:
       return True
   return False
 
-def filter_words(words: list[Word], filters: list[re.Pattern]) -> list[Word]:
+def filter_words(words: list[Word], filters: list[re.Pattern], encipher_words: bool) -> list[Word]:
   """Filters the given list of words to only those matching at least one of the given filters."""
-  return [word for word in words if matches_any(word.word, filters)]
+  return [word for word in words
+          if matches_any(encipher(word.word) if encipher_words else word.word, filters)]
 
 def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word]):
   """Filters the audio component of the given input file to mute the provided list of transcribed words."""
@@ -77,21 +87,26 @@ def main():
   parser.add_argument('-o', '--output',
                       help='Name of the output file. (Default: <input file>-filtered.<extension>)')
   parser.add_argument('-w', '--filter-word', default=[], action='append',
-                      help="A word to filter out. Treated as a case-insensitive regular expression. Can be specified multiple times.")
+                      help='A word to filter out. Treated as a case-insensitive regular expression. Can be specified multiple times.')
   # parser.add_argument('-l', '--filter-lines',
   #                     help="A file of words to filter out. Each line is treated as a case-insentive regular expression.")
+  parser.add_argument('-e', '--encipher-words', default=False, action='store_true',
+                      help='Before applying filters, enchiper transcribed words by replacing each letter with the one immediately after it in the alphabet ' + \
+                           '(looping around at the end; i.e., caesar cipher with a shift of 1). Use this if you need to filter out profanity but would prefer ' + \
+                           'not to read profanity when specifying your filters.')
   args = parser.parse_args()
   
   input_file = args.input_file
   output_file = args.output if args.output is not None else get_output_file_path(input_file)
   filters = [re.compile(word, re.IGNORECASE) for word in args.filter_word]
+  encipher_words = args.encipher_words
 
   extract_audio(input_file, "audio.wav")
   segments = transcribe_audio("audio.wav")
   os.remove("audio.wav")
 
   words = get_words(segments)
-  filtered_words = filter_words(words, filters)
+  filtered_words = filter_words(words, filters, encipher_words)
   filter_audio(input_file, output_file, filtered_words)
 
 if __name__ == "__main__":
