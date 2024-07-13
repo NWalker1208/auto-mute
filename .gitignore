@@ -1,5 +1,4 @@
-/model.bin
-/video.mp4
-/audio.wav
-/transcription.csv
-/filtered-video.mp4
+/*.bin
+/*.mp4
+/*.wav
+/*.csv
