@@ -107,6 +107,7 @@ def main():
 
   words = get_words(segments)
   filtered_words = filter_words(words, filters, encipher_words)
+  print(f"Filtering out {len(filtered_words)} audio segments that match filters.")
   filter_audio(input_file, output_file, filtered_words)
 
 if __name__ == "__main__":
