@@ -2,29 +2,32 @@
 
 A command-line tool to automatically mute specific words from audio and video files. Currently just a proof-of-concept. Originally intended for censoring profanity, but I've tried to make it a bit more general purpose.
 
-Uses OpenAI Whisper to transcribe audio and ffmpeg to apply filters.
+Uses OpenAI Whisper to transcribe audio and ffmpeg to extract audio and apply filters.
 
 
 ## Usage
 
 > :warning: Currently only tested in WSL.
 
-Right now, `automute.py` just uses hard-coded paths for the input and output files. It expects there to be a `video.mp4` file in the working directory, and it will output a `filtered-video.mp4` file. I plan to make this much more flexible in the future.
+Install the requirements listed in `requirements.txt`, then run `python src/automute.py --help` for usage information.
 
 
 ## To-Do
 
 - Improve command line interface:
-  - Arguments for input and output files.
-  - Arguments for which words/patterns to filter.
-  - Arguments for other settings to pass on to whisper.cpp.
-  - Show less output from tools.
+  - Argument for file of filters to use.
+  - Argument for padding to add around words.
+  - Arguments for other settings to pass on to whisper (e.g., model).
 - Avoid writing intermediate files to disk, or at least keep them in a temp directory.
 - Avoid re-extracting/transcribing audio if the input file hasn't changed.
 
 
 ## To-Done
 
+- Improve command line interface:
+  - Arguments for input and output files.
+  - Arguments for which words/patterns to filter.
+  - Show less output from tools.
 - Get more accurate word-level timestamps.
   - The whisper library's "word timestamps" option seems to work better than the token-level timestamps I get from whisper.cpp. This option uses "the cross-attention pattern and dynamic time warping."
   - In theory, whisper.cpp's built-in dtw option should provide similar output, but I haven't been able to get this feature to work. See ggerganov/whisper.cpp#2301.
