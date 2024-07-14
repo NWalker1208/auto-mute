@@ -43,7 +43,7 @@ def encipher(s: str) -> str:
   # This array can be modified for other languages.
   ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
   return ''.join([(c if c not in ALPHABET else
-                   ALPHABET[(ALPHABET.index(c)-1) % len(ALPHABET)])
+                   ALPHABET[(ALPHABET.index(c) + 1) % len(ALPHABET)])
                   for c in s.lower()])
 
 def matches_any(s: str, filters: list[re.Pattern]) -> bool:
@@ -82,7 +82,7 @@ def main():
     prog='automute',
     description='A command-line tool for automatically muting specific words from audio and video files.'
   )
-  parser.add_argument('input-file',
+  parser.add_argument('input',
                       help='Audio or video file to apply filters to.')
   parser.add_argument('-o', '--output',
                       help='Name of the output file. (Default: <input file>-filtered.<extension>)')
@@ -96,7 +96,7 @@ def main():
                            'not to read profanity when specifying your filters.')
   args = parser.parse_args()
   
-  input_file = args.input_file
+  input_file = args.input
   output_file = args.output if args.output is not None else get_output_file_path(input_file)
   filters = [re.compile(word, re.IGNORECASE) for word in args.filter_word]
   encipher_words = args.encipher_words
