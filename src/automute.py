@@ -6,9 +6,10 @@ import argparse, re, os, pathlib
 
 def extract_audio(input_file: str, output_file: str):
   """Extracts the audio component of the input file at the sample rate required by Whisper."""
+  print("Extracting audio")
   stream = ffmpeg.input(input_file)
-  stream = ffmpeg.output(stream, output_file, ar=16000)
-  stream = ffmpeg.overwrite_output(stream)
+  stream = ffmpeg.output(stream, output_file, ar=16000, loglevel="warning")
+  # stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
 
 def transcribe_audio(input_file: str, model_name: str = "small.en") -> list[Segment]:
@@ -60,6 +61,7 @@ def filter_words(words: list[Word], filters: list[re.Pattern], encipher_words: b
 
 def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word]):
   """Filters the audio component of the given input file to mute the provided list of transcribed words."""
+  print("Applying filters")
   stream = ffmpeg.input(input_file)
   video = stream.video
   audio = stream.audio
@@ -68,9 +70,10 @@ def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word])
     audio = ffmpeg.filter(audio, 'volume', volume=0,
                           enable=f"between(t,{word.start:.3f},{word.end:.3f})")
   
-  stream = ffmpeg.output(video, audio, output_file, vcodec="copy")
-  stream = ffmpeg.overwrite_output(stream)
+  stream = ffmpeg.output(video, audio, output_file, vcodec="copy", loglevel="warning")
+  # stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
+  print(f"Saved filtered audio/video file to '{output_file}'")
 
 def get_output_file_path(input_file: str) -> str:
   """Creates an output file path from an input file path."""
@@ -107,8 +110,10 @@ def main():
 
   words = get_words(segments)
   filtered_words = filter_words(words, filters, encipher_words)
-  print(f"Filtering out {len(filtered_words)} audio segments that match filters.")
+  print(f"Found {len(filtered_words)} audio segments that match filters")
   filter_audio(input_file, output_file, filtered_words)
+  
+  print("Done")
 
 if __name__ == "__main__":
   main()
