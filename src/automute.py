@@ -75,6 +75,19 @@ def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word])
   ffmpeg.run(stream)
   print(f"Saved filtered audio/video file to '{output_file}'")
 
+def compile_filters(filter_words: list[str], filter_files: list[str]) -> list[re.Pattern]:
+  # Compile word list
+  words = [re.compile(word, re.IGNORECASE) for word in filter_words]
+  # Compile words from filter files
+  for file_name in filter_files:
+    with open(file_name) as file:
+      for line in file:
+        word = line.rstrip()
+        if len(word) > 0:
+          words.append(re.compile(word, re.IGNORECASE))
+  
+  return words
+
 def get_output_file_path(input_file: str) -> str:
   """Creates an output file path from an input file path."""
   input_path = pathlib.Path(input_file)
@@ -91,8 +104,8 @@ def main():
                       help='Name of the output file. (Default: <input file>-filtered.<extension>)')
   parser.add_argument('-w', '--filter-word', default=[], action='append',
                       help='A word to filter out. Treated as a case-insensitive regular expression. Can be specified multiple times.')
-  # parser.add_argument('-l', '--filter-lines',
-  #                     help="A file of words to filter out. Each line is treated as a case-insentive regular expression.")
+  parser.add_argument('-f', '--filter-file', default=[], action='append',
+                      help="A file of words to filter out. Each line is treated as a case-insentive regular expression.")
   parser.add_argument('-e', '--encipher-words', default=False, action='store_true',
                       help='Before applying filters, enchiper transcribed words by replacing each letter with the one immediately after it in the alphabet ' + \
                            '(looping around at the end; i.e., caesar cipher with a shift of 1). Use this if you need to filter out profanity but would prefer ' + \
@@ -101,7 +114,7 @@ def main():
   
   input_file = args.input
   output_file = args.output if args.output is not None else get_output_file_path(input_file)
-  filters = [re.compile(word, re.IGNORECASE) for word in args.filter_word]
+  filters = compile_filters(args.filter_word, args.filter_file)
   encipher_words = args.encipher_words
 
   extract_audio(input_file, "audio.wav")
