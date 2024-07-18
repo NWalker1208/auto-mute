@@ -161,9 +161,9 @@ def main():
     if answer in ["no", "n"]:
       exit(0)
 
-  extract_audio(input_file, "audio.wav")
-  segments = transcribe_audio("audio.wav", model_settings, transcribe_settings)
-  os.remove("audio.wav")
+  #extract_audio(input_file, "audio.wav")
+  segments = transcribe_audio(input_file, model_settings, transcribe_settings)
+  #os.remove("audio.wav")
 
   words = get_words(segments)
   filtered_words = filter_words(words, filters, encipher_words)

@@ -14,9 +14,9 @@ Install the requirements listed in `requirements.txt`, then run `python src/auto
 
 ## To-Do
 
-- Avoid writing intermediate files to disk, or at least keep them in a temp directory.
 - Avoid re-extracting/transcribing audio if the input file hasn't changed.
 - Add YouTube support using [pytubefix](https://github.com/JuanBindez/pytubefix).
+- Make this work in a browser?
 
 
 ## To-Done
@@ -37,3 +37,4 @@ Install the requirements listed in `requirements.txt`, then run `python src/auto
     - [whisperX](https://github.com/m-bain/whisperX)
   - Using a separate [forced alignment tool](https://github.com/pettarin/forced-alignment-tools) was another option.
   - I ended up going with faster-whisper as they implement the DTW approach while being very performant overall.
+- Avoid writing intermediate files to disk, or at least keep them in a temp directory.
