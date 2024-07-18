@@ -12,15 +12,13 @@ def extract_audio(input_file: str, output_file: str):
   # stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
 
-def transcribe_audio(input_file: str, model_name: str = "small.en") -> list[Segment]:
+def transcribe_audio(input_file: str, model_settings: dict = {}, transcribe_settings: dict = {}) -> list[Segment]:
   """Feeds the audio file into the specified Whisper model and returns the transcribed segments."""
-  model = WhisperModel(
-    model_size_or_path = model_name,
-    compute_type = "float32"
-  )
+  model = WhisperModel(**model_settings)
   segments, info = model.transcribe(
     audio = input_file,
-    word_timestamps = True
+    word_timestamps = True,
+    **transcribe_settings
   )
   total_duration = round(info.duration, 2)
 
@@ -141,9 +139,14 @@ def main():
   filters = compile_filters(args.filter_word, args.filter_file)
   encipher_words = args.encipher_words
   padding = parse_padding(args.padding)
+  model_settings = dict(
+    model_size_or_path = args.whisper_model,
+    compute_type = args.whisper_compute_type,
+    device = args.whisper_device
+  )
 
   extract_audio(input_file, "audio.wav")
-  segments = transcribe_audio("audio.wav")
+  segments = transcribe_audio("audio.wav", model_settings)
   os.remove("audio.wav")
 
   words = get_words(segments)
