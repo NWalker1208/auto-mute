@@ -124,10 +124,10 @@ def main():
   parser.add_argument('-p', '--padding', default='0',
                       help='Padding in milliseconds to apply around filtered audio segments. Can be specified as a single integer or as two integers separated ' +
                            'by a comma to specify the start and end padding separately. (Default: 0)')
-  parser.add_argument('--whisper-model', default='small',
+  parser.add_argument('--whisper-model', default='distil-small.en',
                       help='The faster_whisper model to use for audio transcription. Can be a model name (tiny, tiny.en, base, base.en, small, small.en, ' +
                            'distil-small.en, medium, medium.en, distil-medium.en, large, large-v1, large-v2, distil-large-v2, large-v3, or distil-large-v3), ' +
-                           'a CTranslate2-converted model ID from Hugging Face, or a path to a local model.')
+                           'a CTranslate2-converted model ID from Hugging Face, or a path to a local model. See faster-whisper docs. (Default: distil-small.en)')
   parser.add_argument('--whisper-compute-type', default='auto', choices=['default','auto','int8','int8_float16','int8_bfloat16','int8_float32','int16','float16','bfloat16','float32'],
                       help='The compute type to use when loading the Whisper model. \'default\' explicitly uses the same quantization that the model is already using. ' + 
                            '\'auto\' selects the fasted option that is supported by the device used. (Default: auto)')
