@@ -145,6 +145,13 @@ def main():
     device = args.whisper_device
   )
 
+  if len(filters) == 0:
+    answer = None
+    while answer not in ["yes", "y", "no", "n", ""]:
+      answer = input("No filters configured. Continue anyways? [Y/n] ").lower()
+    if answer in ["no", "n"]:
+      exit(0)
+
   extract_audio(input_file, "audio.wav")
   segments = transcribe_audio("audio.wav", model_settings)
   os.remove("audio.wav")
