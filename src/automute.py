@@ -59,21 +59,34 @@ def filter_words(words: list[Word], filters: list[re.Pattern], encipher_words: b
   return [word for word in words
           if matches_any(encipher(word.word) if encipher_words else word.word, filters)]
 
-def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word]):
+def filter_audio(input_file: str, output_file: str, words_to_remove: list[Word], padding: tuple[int,int]):
   """Filters the audio component of the given input file to mute the provided list of transcribed words."""
   print("Applying filters")
   stream = ffmpeg.input(input_file)
   video = stream.video
   audio = stream.audio
 
+  start_padding, end_padding = padding
   for word in words_to_remove:
+    start = word.start - (start_padding / 1000.0)
+    end = word.end + (end_padding / 1000.0)
     audio = ffmpeg.filter(audio, 'volume', volume=0,
-                          enable=f"between(t,{word.start:.3f},{word.end:.3f})")
+                          enable=f"between(t,{start:.3f},{end:.3f})")
   
   stream = ffmpeg.output(video, audio, output_file, vcodec="copy", loglevel="warning")
   # stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
   print(f"Saved filtered audio/video file to '{output_file}'")
+
+def parse_padding(padding_str: str) -> tuple[int,int]:
+  values = [int(x) for x in padding_str.split(',')]
+  if len(values) == 1:
+    return (values[0], values[0])
+  elif len(values) == 2:
+    return (values[0], values[1])
+  else:
+    print("Error: Invalid filter padding values")
+    exit(1)
 
 def compile_filters(filter_words: list[str], filter_files: list[str]) -> list[re.Pattern]:
   # Compile word list
@@ -107,15 +120,18 @@ def main():
   parser.add_argument('-f', '--filter-file', default=[], action='append',
                       help="A file of words to filter out. Each line is treated as a case-insentive regular expression.")
   parser.add_argument('-e', '--encipher-words', default=False, action='store_true',
-                      help='Before applying filters, enchiper transcribed words by replacing each letter with the one immediately after it in the alphabet ' + \
-                           '(looping around at the end; i.e., caesar cipher with a shift of 1). Use this if you need to filter out profanity but would prefer ' + \
+                      help='Before applying filters, enchiper transcribed words by replacing each letter with the one immediately after it in the alphabet ' +
+                           '(looping around at the end; i.e., caesar cipher with a shift of 1). Use this if you need to filter out profanity but would prefer ' +
                            'not to read profanity when specifying your filters.')
+  parser.add_argument('-p', '--padding', default='0',
+                      help='Padding in milliseconds to apply around filtered audio segments. Can be specified as a single integer or as two integers separated ' +
+                           'by a comma to specify the start and end padding separately. (Default: 0)')
   args = parser.parse_args()
-  
   input_file = args.input
   output_file = args.output if args.output is not None else get_output_file_path(input_file)
   filters = compile_filters(args.filter_word, args.filter_file)
   encipher_words = args.encipher_words
+  padding = parse_padding(args.padding)
 
   extract_audio(input_file, "audio.wav")
   segments = transcribe_audio("audio.wav")
@@ -124,7 +140,7 @@ def main():
   words = get_words(segments)
   filtered_words = filter_words(words, filters, encipher_words)
   print(f"Found {len(filtered_words)} audio segments that match filters")
-  filter_audio(input_file, output_file, filtered_words)
+  filter_audio(input_file, output_file, filtered_words, padding)
   
   print("Done")
 

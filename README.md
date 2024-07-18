@@ -15,7 +15,6 @@ Install the requirements listed in `requirements.txt`, then run `python src/auto
 ## To-Do
 
 - Improve command line interface:
-  - Argument for padding to add around words.
   - Arguments for other settings to pass on to whisper (e.g., model).
 - Avoid writing intermediate files to disk, or at least keep them in a temp directory.
 - Avoid re-extracting/transcribing audio if the input file hasn't changed.
@@ -29,6 +28,7 @@ Install the requirements listed in `requirements.txt`, then run `python src/auto
   - Arguments for which words/patterns to filter.
   - Show less output from tools.
   - Argument for file of filters to use.
+  - Argument for padding to add around words.
 - Get more accurate word-level timestamps.
   - The whisper library's "word timestamps" option seems to work better than the token-level timestamps I get from whisper.cpp. This option uses "the cross-attention pattern and dynamic time warping."
   - In theory, whisper.cpp's built-in dtw option should provide similar output, but I haven't been able to get this feature to work. See ggerganov/whisper.cpp#2301.
