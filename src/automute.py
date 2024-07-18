@@ -133,6 +133,9 @@ def main():
                            '\'auto\' selects the fasted option that is supported by the device used. (Default: auto)')
   parser.add_argument('--whisper-device', default='auto', choices=['auto','cpu','cuda'],
                       help='The compute device to use when running the Whisper model. (Default: auto)')
+  parser.add_argument('--whisper-silence-ms', default=-1, type=int,
+                      help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
+                           '(Default: -1)')
   args = parser.parse_args()
   input_file = args.input
   output_file = args.output if args.output is not None else get_output_file_path(input_file)
@@ -144,6 +147,12 @@ def main():
     compute_type = args.whisper_compute_type,
     device = args.whisper_device
   )
+  transcribe_settings = dict(
+    vad_filter=args.whisper_silence_ms >= 0,
+    vad_parameters=dict(
+      min_silence_duration_ms=args.whisper_silence_ms
+    ) if args.whisper_silence_ms >= 0 else dict()
+  )
 
   if len(filters) == 0:
     answer = None
@@ -153,7 +162,7 @@ def main():
       exit(0)
 
   extract_audio(input_file, "audio.wav")
-  segments = transcribe_audio("audio.wav", model_settings)
+  segments = transcribe_audio("audio.wav", model_settings, transcribe_settings)
   os.remove("audio.wav")
 
   words = get_words(segments)
