@@ -1,2 +1,3 @@
-/models
-/media
+/models/
+/media/
+.transcription_cache/

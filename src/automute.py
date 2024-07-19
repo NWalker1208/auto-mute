@@ -2,7 +2,9 @@ import ffmpeg
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment, Word
 from tqdm import tqdm
-import argparse, re, os, pathlib
+import argparse, re, os, pathlib, hashlib, csv
+
+TRANSCRIPTION_CACHE_DIR = ".transcription_cache/"
 
 def extract_audio(input_file: str, output_file: str):
   """Extracts the audio component of the input file at the sample rate required by Whisper."""
@@ -11,6 +13,30 @@ def extract_audio(input_file: str, output_file: str):
   stream = ffmpeg.output(stream, output_file, ar=16000, loglevel="warning")
   # stream = ffmpeg.overwrite_output(stream)
   ffmpeg.run(stream)
+
+def hash_file(path: str) -> str:
+  """Computes the SHA-1 hash of the file at the given path."""
+  sha1 = hashlib.sha1()
+  with open(path, 'rb') as file:
+    while True:
+      b = file.read(1024)
+      if not b:
+        break
+      sha1.update(b)
+  return sha1.hexdigest()
+
+def check_transcription_cache(sha1_digest: str) -> list[Word] | None:
+  """Attempts to get a cached transcription for a file with the given SHA-1 digest."""
+  cache_path = f"{TRANSCRIPTION_CACHE_DIR}{sha1_digest}.csv"
+  if os.path.isfile(cache_path):
+    words = []
+    with open(cache_path) as csvfile:
+      reader = csv.reader(csvfile)
+      for row in reader:
+        words.append(Word(float(row[0]), float(row[1]), row[2], float(row[3])))
+    return words
+  else:
+    return None
 
 def transcribe_audio(input_file: str, model_settings: dict = {}, transcribe_settings: dict = {}) -> list[Segment]:
   """Feeds the audio file into the specified Whisper model and returns the transcribed segments."""
@@ -35,6 +61,16 @@ def transcribe_audio(input_file: str, model_settings: dict = {}, transcribe_sett
 def get_words(segments: list[Segment]) -> list[Word]:
   """Flattens a list of transcription segments into a list of transcribed words."""
   return [word for segment in segments for word in segment.words]
+
+def cache_transcription(words: list[Word], sha1_digest: str):
+  """Caches the given transcription for the input file with the given SHA-1 digest."""
+  print("Caching transcription")
+  os.makedirs(TRANSCRIPTION_CACHE_DIR)
+  cache_path = f"{TRANSCRIPTION_CACHE_DIR}{sha1_digest}.csv"
+  with open(cache_path, 'w') as csvfile:
+    writer = csv.writer(csvfile)
+    for word in words:
+      writer.writerow([str(word.start), str(word.end), word.word, str(word.probability)])
 
 def encipher(s: str) -> str:
   """Enciphers a given string by applying a simple caesar cipher.
@@ -104,6 +140,16 @@ def get_output_file_path(input_file: str) -> str:
   input_path = pathlib.Path(input_file)
   return str(input_path.with_stem(input_path.stem + "-filtered"))
 
+def confirm(prompt: str, default: bool | None = None) -> bool:
+  options = "[y/n]" if default is None else ("[Y/n]" if default else "[y/N]")
+  answer = None
+  while answer not in ["yes", "y", "no", "n"] and (answer != "" or default is None):
+    answer = input(f"{prompt} {options} ").lower()
+  if answer == "":
+    return default
+  else:
+    return answer in ["yes", "y"]
+
 def main():
   parser = argparse.ArgumentParser(
     prog='automute',
@@ -154,18 +200,21 @@ def main():
     ) if args.whisper_silence_ms >= 0 else dict()
   )
 
-  if len(filters) == 0:
-    answer = None
-    while answer not in ["yes", "y", "no", "n", ""]:
-      answer = input("No filters configured. Continue anyways? [Y/n] ").lower()
-    if answer in ["no", "n"]:
-      exit(0)
+  if len(filters) == 0 and not confirm("No filters configured. Continue anyways?", default=True):
+    exit(0)
 
-  #extract_audio(input_file, "audio.wav")
-  segments = transcribe_audio(input_file, model_settings, transcribe_settings)
-  #os.remove("audio.wav")
+  sha1_digest = hash_file(input_file)
+  words = check_transcription_cache(sha1_digest)
+  if words is not None and not confirm("Use cached audio transcription?", default=True):
+    words = None
 
-  words = get_words(segments)
+  if words is None:
+    #extract_audio(input_file, "audio.wav")
+    segments = transcribe_audio(input_file, model_settings, transcribe_settings)
+    #os.remove("audio.wav")
+    words = get_words(segments)
+    cache_transcription(words, sha1_digest)
+
   filtered_words = filter_words(words, filters, encipher_words)
   print(f"Found {len(filtered_words)} audio segments that match filters")
   filter_audio(input_file, output_file, filtered_words, padding)
