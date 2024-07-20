@@ -1,5 +1,5 @@
 from faster_whisper import WhisperModel
-from faster_whisper.transcribe import Segment, Word
+from faster_whisper.transcribe import Segment
 from tqdm import tqdm
 import hashlib, json, os
 from strong_typing import serialization
