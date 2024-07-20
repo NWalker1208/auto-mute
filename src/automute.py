@@ -130,7 +130,7 @@ def compile_filters(filter_words: list[str], filter_files: list[str]) -> list[re
     with open(file_name) as file:
       for line in file:
         word = line.rstrip()
-        if len(word) > 0:
+        if len(word) > 0 and not word.startswith("#"):
           words.append(re.compile(word, re.IGNORECASE))
   
   return words

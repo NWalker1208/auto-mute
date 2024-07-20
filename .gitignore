@@ -1,3 +1,6 @@
+**/__pycache__/
+
 /models/
 /media/
 .transcription_cache/
+default_wordlist_en.txt
