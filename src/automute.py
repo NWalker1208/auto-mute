@@ -65,7 +65,7 @@ def get_words(segments: list[Segment]) -> list[Word]:
 def cache_transcription(words: list[Word], sha1_digest: str):
   """Caches the given transcription for the input file with the given SHA-1 digest."""
   print("Caching transcription")
-  os.makedirs(TRANSCRIPTION_CACHE_DIR)
+  os.makedirs(TRANSCRIPTION_CACHE_DIR, exist_ok=True)
   cache_path = f"{TRANSCRIPTION_CACHE_DIR}{sha1_digest}.csv"
   with open(cache_path, 'w') as csvfile:
     writer = csv.writer(csvfile)
