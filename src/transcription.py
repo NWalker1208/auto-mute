@@ -70,12 +70,16 @@ def _get_cached_transcription(key: tuple[str, dict]) -> list[Segment]:
 
   data = None
   with open(path) as file:
-    data = json.load(file)
+    try:
+      data = json.load(file)
+    except json.JSONDecodeError:
+      print("Failed to parse cached transcription")
+      return None
   
-  if data.key != key_dict:
+  if data["key"] != key_dict:
     return None
   
-  return data.segments
+  return data["segments"]
 
 def _cache_transcription(key: tuple[str, dict], segments: list[Segment]):
   """Saves a transcription to the transcription cache."""
@@ -86,5 +90,5 @@ def _cache_transcription(key: tuple[str, dict], segments: list[Segment]):
     json.dump({
       "key": key_dict,
       "segments": segments
-    }, file)
+    }, file, indent=True)
   print("Added transcription to cache")
