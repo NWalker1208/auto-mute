@@ -9,10 +9,10 @@ class AudioSegment:
 
 def compile_filters(words: list[str], files: list[str]) -> list[re.Pattern]:
   """Compiles a list of filters from a list of words and filter files."""
-  words = [re.compile(word, re.IGNORECASE) for word in words]
+  filters = [re.compile(word, re.IGNORECASE) for word in words]
   for file in files:
-    words += _compile_filters_from_file(file)
-  return words
+    filters += _compile_filters_from_file(file)
+  return filters
 
 def _compile_filters_from_file(file_path: str) -> list[re.Pattern]:
   """Compiles a list of filters from the lines of a filter file."""
@@ -46,7 +46,7 @@ def _matches_any(word: str, filters: list[re.Pattern], encipher_words: bool) -> 
   """Checks if the given string matches any pattern from the given list."""
   if encipher_words:
     word = _encipher(word)
-  any(filter.search(word) is not None for filter in filters)
+  return any(filter.search(word) is not None for filter in filters)
 
 def _find_filter_segments(words: list[Word], filters: list[re.Pattern], encipher_words: bool) -> list[AudioSegment]:
   """Creates a list of audio segments to filter out based on a list of words and filters."""
