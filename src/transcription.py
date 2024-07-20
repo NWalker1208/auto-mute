@@ -2,6 +2,7 @@ from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment, Word
 from tqdm import tqdm
 import hashlib, json, os
+from strong_typing import serialization
 
 def transcribe(input_file: str, model_name_or_path: str, whisper_kwargs: dict = {}, transcribe_kwargs: dict = {}, ignore_cache: bool = False) -> list[Segment]:
   """Transcribes the given input file using the specified Whisper model and settings."""
@@ -78,17 +79,23 @@ def _get_cached_transcription(key: tuple[str, dict]) -> list[Segment]:
   
   if data["key"] != key_dict:
     return None
-  
-  return data["segments"]
+
+  try:
+    return serialization.json_to_object(list[Segment], data["segments"])
+  except:
+    print("Failed to parse cached transcription")
+    return None
 
 def _cache_transcription(key: tuple[str, dict], segments: list[Segment]):
   """Saves a transcription to the transcription cache."""
-  os.makedirs(_TRANSCRIPTION_CACHE_DIR, exist_ok=True)
   key_hash, key_dict = key
+  json_obj = serialization.object_to_json({
+    "key": key_dict,
+    "segments": segments
+  })
+
+  os.makedirs(_TRANSCRIPTION_CACHE_DIR, exist_ok=True)
   path = os.path.join(_TRANSCRIPTION_CACHE_DIR, f"{key_hash}.json")
   with open(path, 'w') as file:
-    json.dump({
-      "key": key_dict,
-      "segments": segments
-    }, file, indent=True)
+    json.dump(json_obj, file, indent=True)
   print("Added transcription to cache")
