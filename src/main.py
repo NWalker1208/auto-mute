@@ -32,6 +32,8 @@ def _parse_arguments() -> argparse.Namespace:
   parser.add_argument('--whisper-silence-ms', default=-1, type=int,
                       help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
                            '(Default: -1)')
+  parser.add_argument('--ignore-cached-transcriptions', default=False, action='store_true',
+                      help='Ignore any cached transcriptions.')
   return parser.parse_args()
 
 def _parse_padding(padding_str: str) -> tuple[int,int]:
@@ -86,7 +88,8 @@ def main():
       vad_parameters=dict(
         min_silence_duration_ms=args.whisper_silence_ms
       ) if args.whisper_silence_ms >= 0 else dict()
-    )
+    ),
+    ignore_cache=args.ignore_cached_transcriptions
   )
 
   filter_segments = find_audio_segments_to_filter(text_segments, filters, args.encipher_words)
