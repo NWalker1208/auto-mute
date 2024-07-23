@@ -11,10 +11,15 @@ Uses OpenAI Whisper to transcribe audio and ffmpeg to extract audio and apply fi
 
 Install the requirements listed in `requirements.txt`, then run `python src/main.py --help` for usage information.
 
+You may find the pip package `pytubefix` handy for downloading YouTube videos that you want to filter:
+```bash
+pytubefix <YouTube URL> -f -t <download directory>
+```
+
 
 ## To-Do
 
-- Add YouTube support using [pytubefix](https://github.com/JuanBindez/pytubefix).
+- Add support for creating filtered subtitles from transcription.
 - Make this work in a browser?
 
 
