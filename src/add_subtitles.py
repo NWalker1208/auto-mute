@@ -2,7 +2,7 @@ from faster_whisper.transcribe import Segment, Word
 from dataclasses import dataclass
 import re
 import transcription
-from filters import compile_filters
+from filters import compile_filters, filter_text
 
 def seconds_to_ts(seconds: float) -> str:
   milliseconds = round(seconds * 1000)
@@ -71,15 +71,12 @@ def write_subtitles(subtitles: list[Subtitle], path: str):
       file.write("\n")
       i += 1
 
-def filter_subtitles(subtitles: list[Subtitle], filters: list[re.Pattern], replacement: str) -> list[Subtitle]:
+def filter_subtitles(subtitles: list[Subtitle], filters: list[re.Pattern], replacement: str, encipher_text: bool) -> list[Subtitle]:
   new_subtitles = []
   for subtitle in subtitles:
     new_lines = []
     for line in subtitle.lines:
-      new_line = line
-      for filter in filters:
-        new_line = filter.sub(replacement, new_line)
-      new_lines.append(new_line)
+      new_lines.append(filter_text(line, filters, replacement, encipher_text))
     new_subtitles.append(Subtitle(subtitle.start, subtitle.end, new_lines))
   return new_subtitles
 
@@ -95,7 +92,7 @@ def main():
   )
   subtitles = layout_subtitles(segments)
   filter_list = compile_filters([], ['default_wordlist_en.txt'])
-  subtitles = filter_subtitles(subtitles, filter_list, '[__]')
+  subtitles = filter_subtitles(subtitles, filter_list, '[__]', True)
   write_subtitles(subtitles, "./media/subtitles.srt")
 
   # TODO: https://www.bannerbear.com/blog/how-to-add-subtitles-to-a-video-file-using-ffmpeg/#hard-subtitles-vs-soft-subtitles

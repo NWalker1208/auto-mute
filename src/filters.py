@@ -33,14 +33,37 @@ def _flatten_transcription(segments: list[Segment]) -> list[Word]:
   """Turns a list of transcription segments into a list of words."""
   return [word for segment in segments for word in segment.words]
 
+def filter_text(text: str, filters: list[re.Pattern], replacement_text: str, encipher_text: bool) -> str:
+  """Applies the list of filters to a string, replacing any matches with the given replacement string."""
+  if encipher_text:
+    text = _encipher(text)
+    replacement_text = _encipher(replacement_text)
+  for filter in filters:
+    text = filter.sub(replacement_text, text)
+  if encipher_text:
+    text = _decipher(text)
+  return text
+
+# This array can be modified for other languages.
+_ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+
+def _shift_letter(c: str, offset: int) -> str:
+  """Rotates a character through the alphabet, if it is a letter."""
+  c_lower = c.lower()
+  if c_lower not in _ALPHABET:
+    return c
+  
+  o_lower = _ALPHABET[(_ALPHABET.index(c_lower) + offset) % len(_ALPHABET)]
+  return o_lower if c.islower() else o_lower.upper()
+
 def _encipher(s: str) -> str:
   """Enciphers a given string by applying a simple caesar cipher.
   This lets users choose to avoid having profanity in human-readable form."""
-  # This array can be modified for other languages.
-  ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-  return ''.join([(c if c not in ALPHABET else
-                   ALPHABET[(ALPHABET.index(c) + 1) % len(ALPHABET)])
-                  for c in s.lower()])
+  return ''.join(_shift_letter(c, 1) for c in s)
+
+def _decipher(s: str) -> str:
+  """The inverse of _encipher."""
+  return ''.join(_shift_letter(c, -1) for c in s)
 
 def _matches_any(word: str, filters: list[re.Pattern], encipher_words: bool) -> bool:
   """Checks if the given string matches any pattern from the given list."""
