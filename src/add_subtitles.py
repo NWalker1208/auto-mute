@@ -58,6 +58,10 @@ def group_sentences(words: list[Word]) -> list[list[Word]]:
     sentences.append(current_sentence)
   return sentences
 
+# SRT does not seem to support font opacity, only color.
+# mov_text (i.e., mp4) does not seem to support font color at all.
+# Only SubStation Alpha seems to support opacity.
+# It seems like ffmpeg likes to have all of the possible fields present, at least when converting from SSA to SRT.
 def write_subtitles(subtitles: list[Subtitle], path: str):
   with open(path, 'w') as file:
     i = 1
@@ -68,8 +72,10 @@ def write_subtitles(subtitles: list[Subtitle], path: str):
       file.write(f"{start} --> {end}\n")
       for line in subtitle.lines:
         file.write(f"{line}\n")
+        #file.write(f'<font color="#808080">{line}</font>\n')
       file.write("\n")
       i += 1
+      # TODO: Set word opacity/color based on confidence
 
 def filter_subtitles(subtitles: list[Subtitle], filters: list[re.Pattern], replacement: str, encipher_text: bool) -> list[Subtitle]:
   new_subtitles = []
