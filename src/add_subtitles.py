@@ -28,15 +28,26 @@ def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   # - 0.125 second gap between subtitles
   words = [word for segment in segments for word in segment.words]
   sentences = group_sentences(words)
-  return sentences
-  # subtitles = []
-  # # TODO: Incorporate conventions above.
-  # for sentence in sentences:
-  #   text = ''.join(w.word for w in sentence).strip()
-  #   start = sentence[0].start
-  #   end = sentence[-1].end
-  #   subtitles.append(Subtitle(start, end, [text]))
-  # return subtitles
+  subtitles = []
+  subtitle_char_count = 0
+  subtitle = []
+  for sentence in sentences:
+    for word in sentence:
+      subtitle.append(word)
+      subtitle_char_count += len(word.word)
+
+      if subtitle_char_count > 80:
+        # TODO: Find smarter place to split long sentences
+        subtitles.append(subtitle)
+        subtitle = []
+        subtitle_char_count = 0
+    
+    if len(subtitle) > 0:
+      subtitles.append(subtitle)
+      subtitle = []
+      subtitle_char_count = 0
+
+  return subtitles
 
 def group_sentences(words: list[Word]) -> list[list[Word]]:
   """Groups words from a list into sentences based on punctuation."""
