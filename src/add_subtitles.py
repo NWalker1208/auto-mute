@@ -1,5 +1,4 @@
 from faster_whisper.transcribe import Segment, Word
-from dataclasses import dataclass
 import re
 import transcription
 from filters import compile_filters, filter_text
@@ -14,13 +13,7 @@ def seconds_to_ts(seconds: float) -> str:
   minutes %= 60
   return f"{hours:01}:{minutes:02}:{seconds:02}.{centiseconds:02}"
 
-@dataclass
-class Subtitle:
-  start: float
-  end: float
-  lines: list[str]
-
-def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
+def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   """Transforms a list of transcription segments into a list of subtitles."""
   # Conventions to follow: https://engagemedia.org/help/best-practices-for-online-subtitling/
   # - Max = 2 lines
@@ -35,14 +28,15 @@ def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
   # - 0.125 second gap between subtitles
   words = [word for segment in segments for word in segment.words]
   sentences = group_sentences(words)
-  subtitles = []
-  # TODO: Incorporate conventions above.
-  for sentence in sentences:
-    text = ''.join(w.word for w in sentence).strip()
-    start = sentence[0].start
-    end = sentence[-1].end
-    subtitles.append(Subtitle(start, end, [text]))
-  return subtitles
+  return sentences
+  # subtitles = []
+  # # TODO: Incorporate conventions above.
+  # for sentence in sentences:
+  #   text = ''.join(w.word for w in sentence).strip()
+  #   start = sentence[0].start
+  #   end = sentence[-1].end
+  #   subtitles.append(Subtitle(start, end, [text]))
+  # return subtitles
 
 def group_sentences(words: list[Word]) -> list[list[Word]]:
   """Groups words from a list into sentences based on punctuation."""
@@ -80,25 +74,37 @@ WORD_FORMAT = "{{\\1a&H{alpha:02X}&}}{text}{{\\1a}}"
 # mov_text (i.e., mp4) does not seem to support font color at all.
 # Only SubStation Alpha seems to support opacity.
 # It seems like ffmpeg likes to have all of the possible fields present, at least when converting from SSA to SRT.
-def write_subtitles(subtitles: list[Subtitle], path: str):
+def write_subtitles(subtitles: list[list[Word]], path: str):
   with open(path, 'w') as file:
     file.write(FILE_HEADER)
-    i = 1
     for subtitle in subtitles:
-      start = seconds_to_ts(subtitle.start)
-      end = seconds_to_ts(subtitle.end)
+      start = seconds_to_ts(subtitle[0].start)
+      end = seconds_to_ts(subtitle[-1].end)
       text = ""
-      for line in subtitle.lines:
-        text += line
-      file.write(LINE_FORMAT.format(start=start, end=end, text=text))
+      first = True
+      for word in subtitle:
+        word_text = word.word
+        if first:
+          word_text = word_text.lstrip()
+          first = False
+        text += WORD_FORMAT.format(alpha=probability_to_alpha(word.probability), text=word_text)
+      file.write(LINE_FORMAT.format(start=start, end=end, text=text.strip()))
 
-def filter_subtitles(subtitles: list[Subtitle], filters: list[re.Pattern], replacement: str, encipher_text: bool) -> list[Subtitle]:
+def probability_to_alpha(probability: float) -> int:
+  MIN_ALPHA = 0x00
+  MAX_ALPHA = 0xA0
+  MIN_PROBABILITY = 0.2
+  MAX_PROBABILITY = 0.9
+  lerp = 1.0 - min(max((probability - MIN_PROBABILITY) / (MAX_PROBABILITY - MIN_PROBABILITY), 0.0), 1.0)
+  return MIN_ALPHA + int(lerp * (MAX_ALPHA - MIN_ALPHA))
+
+def filter_subtitles(subtitles: list[list[Word]], filters: list[re.Pattern], replacement: str, encipher_text: bool) -> list[list[Word]]:
   new_subtitles = []
   for subtitle in subtitles:
-    new_lines = []
-    for line in subtitle.lines:
-      new_lines.append(filter_text(line, filters, replacement, encipher_text))
-    new_subtitles.append(Subtitle(subtitle.start, subtitle.end, new_lines))
+    new_words = []
+    for word in subtitle:
+      new_words.append(Word(word.start, word.end, filter_text(word.word, filters, replacement, encipher_text), word.probability))
+    new_subtitles.append(new_words)
   return new_subtitles
 
 def main():
