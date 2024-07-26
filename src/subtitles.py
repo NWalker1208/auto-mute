@@ -2,6 +2,8 @@ from faster_whisper.transcribe import Segment, Word
 import re
 import transcribe
 from filters import compile_filters, filter_text
+import ffmpeg
+import pathlib
 
 def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   """Transforms a list of transcription segments into a list of subtitles."""
@@ -118,8 +120,25 @@ def filter_subtitles(subtitles: list[list[Word]], filters: list[re.Pattern], rep
     new_subtitles.append(new_words)
   return new_subtitles
 
+def add_subtitles_to_video(video_file: str, subtitle_file: str, output_file: str):
+  av = ffmpeg.input(video_file)
+  subtitles = ffmpeg.input(subtitle_file)
+  stream = ffmpeg.output(av, subtitles, output_file, c="copy", loglevel="warning")
+  ffmpeg.run(stream)
+
+def _get_filtered_video_path(input_file: str) -> str:
+  """Creates an output file path from an input file path."""
+  input_path = pathlib.Path(input_file)
+  return str(input_path.with_stem(input_path.stem + "-filtered"))
+
+def _get_output_file_path(input_file: str) -> str:
+  """Creates an output file path from an input file path."""
+  input_path = pathlib.Path(input_file)
+  return str(input_path.with_stem(input_path.stem + "-subtitled").with_suffix(".mkv"))
+
 def main():
-  segments = transcribe.transcribe("./media/missile.mp4", "small.en", whisper_kwargs={
+  video_file = "./media/missile.mp4"
+  segments = transcribe.transcribe(video_file, "large-v3", whisper_kwargs={
       "compute_type": "auto",
       "device": "auto"
     },
@@ -132,6 +151,10 @@ def main():
   filter_list = compile_filters([], ['default_wordlist_en.txt'])
   subtitles = filter_subtitles(subtitles, filter_list, '[__]', True)
   write_subtitles(subtitles, "./media/subtitles.ssa")
+
+  output_file = _get_output_file_path(video_file)
+  add_subtitles_to_video(_get_filtered_video_path(video_file), "./media/subtitles.ssa", output_file)
+  print("Added subtitles to video")
 
   # TODO: https://www.bannerbear.com/blog/how-to-add-subtitles-to-a-video-file-using-ffmpeg/#hard-subtitles-vs-soft-subtitles
 
