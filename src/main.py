@@ -74,7 +74,7 @@ def main():
   if len(filters) == 0 and not _confirm("No filters configured. Continue anyways?", default=True):
     exit(0)
     
-  from transcription import transcribe
+  from transcribe import transcribe
   from audio import filter_audio
 
   text_segments = transcribe(

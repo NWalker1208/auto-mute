@@ -1,6 +1,6 @@
 from faster_whisper.transcribe import Segment, Word
 import re
-import transcription
+import transcribe
 from filters import compile_filters, filter_text
 
 def seconds_to_ts(seconds: float) -> str:
@@ -119,7 +119,7 @@ def filter_subtitles(subtitles: list[list[Word]], filters: list[re.Pattern], rep
   return new_subtitles
 
 def main():
-  segments = transcription.transcribe("./media/missile.mp4", "small.en", whisper_kwargs={
+  segments = transcribe.transcribe("./media/missile.mp4", "small.en", whisper_kwargs={
       "compute_type": "auto",
       "device": "auto"
     },
