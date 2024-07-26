@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import re
 
 @dataclass
-class AudioSegment:
+class TimeSegment:
   start: float
   end: float
 
@@ -24,7 +24,7 @@ def _compile_filters_from_file(file_path: str) -> list[re.Pattern]:
         words.append(re.compile(word, re.IGNORECASE))
     return words
 
-def find_audio_segments_to_filter(transcription_segments: list[Segment], filters: list[re.Pattern], encipher_words: bool) -> list[AudioSegment]:
+def find_time_segments_to_filter(transcription_segments: list[Segment], filters: list[re.Pattern], encipher_words: bool) -> list[TimeSegment]:
   """Creates a list of audio segments to filter out based on the provided transcription and filters."""
   words = _flatten_transcription(transcription_segments)
   return _find_filter_segments(words, filters, encipher_words)
@@ -33,16 +33,38 @@ def _flatten_transcription(segments: list[Segment]) -> list[Word]:
   """Turns a list of transcription segments into a list of words."""
   return [word for segment in segments for word in segment.words]
 
-def filter_text(text: str, filters: list[re.Pattern], replacement_text: str, encipher_text: bool) -> str:
-  """Applies the list of filters to a string, replacing any matches with the given replacement string."""
-  if encipher_text:
-    text = _encipher(text)
-    replacement_text = _encipher(replacement_text)
-  for filter in filters:
-    text = filter.sub(replacement_text, text)
-  if encipher_text:
-    text = _decipher(text)
-  return text
+def filter_transcription(transcription_segments: list[Segment], filters: list[re.Pattern], replacement_text: str, encipher_text: bool) -> tuple[list[Segment], int]:
+  """
+  Applies the list of filters to a transcription, replacing any matches with the given replacement string.
+  Returns the filtered transcription and the number of matches that were found.
+  """
+  new_segments = []
+  total_matches = 0
+  for segment in transcription_segments:
+    new_words = []
+    for word in segment.words:
+      filtered_word, matches = _filter_text(word.word, filters, replacement_text, encipher_text)
+      total_matches += matches
+      new_words.append(Word(
+        start=word.start,
+        end=word.end,
+        word=filtered_word,
+        probability=word.probability
+      ))
+    new_segments.append(Segment(
+      id=segment.id,
+      seek=segment.seek,
+      start=segment.start,
+      end=segment.end,
+      text=''.join(w.text for w in new_words),
+      tokens=segment.tokens,
+      temperature=segment.temperature,
+      avg_logprob=segment.avg_logprob,
+      compression_ratio=segment.compression_ratio,
+      no_speech_prob=segment.no_speech_prob,
+      words=new_words
+    ))
+  return new_segments, total_matches
 
 # This array can be modified for other languages.
 _ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
@@ -75,3 +97,21 @@ def _find_filter_segments(words: list[Word], filters: list[re.Pattern], encipher
   """Creates a list of audio segments to filter out based on a list of words and filters."""
   return [AudioSegment(word.start, word.end) for word in words
           if _matches_any(word.word, filters, encipher_words)]
+
+def _filter_text(text: str, filters: list[re.Pattern], replacement_text: str, encipher_text: bool) -> tuple[str, int]:
+  """
+  Applies the list of filters to a string, replacing any matches with the given replacement string.
+  Returns the filtered string and the number of matches that were found.
+  """
+  if encipher_text:
+    text = _encipher(text)
+    replacement_text = _encipher(replacement_text)
+  total_matches = 0
+  for filter in filters:
+    matches = len(filter.findall(text))
+    if matches > 0:
+      text = filter.sub(replacement_text, text)
+      total_matches += matches
+  if encipher_text:
+    text = _decipher(text)
+  return text, total_matches
