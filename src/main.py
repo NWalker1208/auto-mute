@@ -68,7 +68,7 @@ def main():
   input_file = args.input
   output_file = args.output if args.output is not None else _get_output_file_path(input_file)
   
-  from filters import compile_filters, find_audio_segments_to_filter
+  from filters import compile_filters, find_time_segments_to_filter
   
   filters = compile_filters(args.filter_word, args.filter_file)
   if len(filters) == 0 and not _confirm("No filters configured. Continue anyways?", default=True):
@@ -92,7 +92,7 @@ def main():
     ignore_cache=args.ignore_cached_transcriptions
   )
 
-  filter_segments = find_audio_segments_to_filter(text_segments, filters, args.encipher_words)
+  filter_segments = find_time_segments_to_filter(text_segments, filters, args.encipher_words)
   print(f"Found {len(filter_segments)} audio segments that match filters")
   
   filter_audio(input_file, output_file, filter_segments, args.padding)
