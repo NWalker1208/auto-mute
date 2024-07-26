@@ -3,16 +3,6 @@ import re
 import transcribe
 from filters import compile_filters, filter_text
 
-def seconds_to_ts(seconds: float) -> str:
-  centiseconds = round(seconds * 100)
-  seconds = centiseconds // 100
-  minutes = seconds // 60
-  hours = minutes // 60
-  centiseconds %= 100
-  seconds %= 60
-  minutes %= 60
-  return f"{hours:01}:{minutes:02}:{seconds:02}.{centiseconds:02}"
-
 def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   """Transforms a list of transcription segments into a list of subtitles."""
   # Conventions to follow: https://engagemedia.org/help/best-practices-for-online-subtitling/
@@ -27,7 +17,7 @@ def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   # - >=1.5, <=6 seconds per subtitle
   # - 0.125 second gap between subtitles
   words = [word for segment in segments for word in segment.words]
-  sentences = group_sentences(words)
+  sentences = _group_sentences(words)
   subtitles = []
   subtitle_char_count = 0
   subtitle = []
@@ -49,7 +39,7 @@ def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
 
   return subtitles
 
-def group_sentences(words: list[Word]) -> list[list[Word]]:
+def _group_sentences(words: list[Word]) -> list[list[Word]]:
   """Groups words from a list into sentences based on punctuation."""
   sentences = []
   current_sentence = []
@@ -89,8 +79,8 @@ def write_subtitles(subtitles: list[list[Word]], path: str):
   with open(path, 'w') as file:
     file.write(FILE_HEADER)
     for subtitle in subtitles:
-      start = seconds_to_ts(subtitle[0].start)
-      end = seconds_to_ts(subtitle[-1].end)
+      start = _seconds_to_ts(subtitle[0].start)
+      end = _seconds_to_ts(subtitle[-1].end)
       text = ""
       first = True
       for word in subtitle:
@@ -98,10 +88,20 @@ def write_subtitles(subtitles: list[list[Word]], path: str):
         if first:
           word_text = word_text.lstrip()
           first = False
-        text += WORD_FORMAT.format(alpha=probability_to_alpha(word.probability), text=word_text)
+        text += WORD_FORMAT.format(alpha=_probability_to_alpha(word.probability), text=word_text)
       file.write(LINE_FORMAT.format(start=start, end=end, text=text.strip()))
 
-def probability_to_alpha(probability: float) -> int:
+def _seconds_to_ts(seconds: float) -> str:
+  centiseconds = round(seconds * 100)
+  seconds = centiseconds // 100
+  minutes = seconds // 60
+  hours = minutes // 60
+  centiseconds %= 100
+  seconds %= 60
+  minutes %= 60
+  return f"{hours:01}:{minutes:02}:{seconds:02}.{centiseconds:02}"
+
+def _probability_to_alpha(probability: float) -> int:
   MIN_ALPHA = 0x00
   MAX_ALPHA = 0xA0
   MIN_PROBABILITY = 0.2
