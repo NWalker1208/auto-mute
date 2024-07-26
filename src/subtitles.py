@@ -38,6 +38,7 @@ def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
       subtitles.append(subtitle)
       subtitle = []
       subtitle_char_count = 0
+    # TODO: Skip subtitles/sentences/phrases with low average probability
 
   return subtitles
 
