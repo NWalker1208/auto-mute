@@ -66,7 +66,6 @@ def main():
     
   from transcribe import transcribe, TranscribeOptions
   from audio import filter_audio
-  from cipher import decipher
 
   text_segments = transcribe(
     input_file,
