@@ -25,8 +25,7 @@ def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
   # - 40 characters per line
   # - >=1.5, <=6 seconds per subtitle
   # - 0.125 second gap between subtitles
-  words = [word for segment in segments for word in segment.words]
-  sentences = _group_sentences(words)
+  sentences = _group_sentences(segments)
   subtitles = []
   subtitle_char_count = 0
   subtitle_words = []
@@ -56,18 +55,26 @@ def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
 
   return subtitles
 
-def _group_sentences(words: list[Word]) -> list[list[Word]]:
+def _group_sentences(segments: list[Segment]) -> list[list[Word]]:
   """Groups words from a list into sentences based on punctuation."""
   sentences = []
   current_sentence = []
-  for word in words:
-    current_sentence.append(word)
-    text = word.word
-    if text.endswith('.') or text.endswith('!') or text.endswith('?'):
+  for segment in segments:
+    # Try to detect when lyrics were transcribed without punctuation between lines
+    if len(current_sentence) > 0 and len(current_sentence) < 10 and segment.words[0].word.lstrip()[0].isupper():
       sentences.append(current_sentence)
       current_sentence = []
+
+    for word in segment.words:
+      current_sentence.append(word)
+      text = word.word
+      if text.endswith('.') or text.endswith('!') or text.endswith('?'):
+        sentences.append(current_sentence)
+        current_sentence = []
+
   if len(current_sentence) > 0:
     sentences.append(current_sentence)
+
   return sentences
 
 FILE_HEADER = \
@@ -211,7 +218,8 @@ def main():
   )
 
   segments, matches = filter_transcription(segments, filters, '[__]', args.encipher_words)
-  print(f"Found {matches} matches for filters")
+  if len(filters) > 0:
+    print(f"Found {matches} matches for filters")
 
   subtitles = layout_subtitles(segments)
   script = create_subtitles_script(subtitles)
