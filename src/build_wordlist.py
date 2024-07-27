@@ -2,7 +2,7 @@
 
 import urllib
 import urllib.request
-from automute import encipher
+from cipher import encipher
 
 #URL = "https://raw.githubusercontent.com/InnovativeInventor/dict4schools/master/blacklists/blacklist_light.txt"
 URL = "https://raw.githubusercontent.com/coffee-and-fun/google-profanity-words/main/data/en.txt"

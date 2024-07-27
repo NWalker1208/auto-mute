@@ -1,5 +1,6 @@
 from faster_whisper.transcribe import Segment, Word
 from dataclasses import dataclass
+from cipher import encipher, decipher
 import re
 
 @dataclass
@@ -66,36 +67,15 @@ def filter_transcription(transcription_segments: list[Segment], filters: list[re
     ))
   return new_segments, total_matches
 
-# This array can be modified for other languages.
-_ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-
-def _shift_letter(c: str, offset: int) -> str:
-  """Rotates a character through the alphabet, if it is a letter."""
-  c_lower = c.lower()
-  if c_lower not in _ALPHABET:
-    return c
-  
-  o_lower = _ALPHABET[(_ALPHABET.index(c_lower) + offset) % len(_ALPHABET)]
-  return o_lower if c.islower() else o_lower.upper()
-
-def _encipher(s: str) -> str:
-  """Enciphers a given string by applying a simple caesar cipher.
-  This lets users choose to avoid having profanity in human-readable form."""
-  return ''.join(_shift_letter(c, 1) for c in s)
-
-def _decipher(s: str) -> str:
-  """The inverse of _encipher."""
-  return ''.join(_shift_letter(c, -1) for c in s)
-
 def _matches_any(word: str, filters: list[re.Pattern], encipher_words: bool) -> bool:
   """Checks if the given string matches any pattern from the given list."""
   if encipher_words:
-    word = _encipher(word)
+    word = encipher(word)
   return any(filter.search(word) is not None for filter in filters)
 
-def _find_filter_segments(words: list[Word], filters: list[re.Pattern], encipher_words: bool) -> list[AudioSegment]:
+def _find_filter_segments(words: list[Word], filters: list[re.Pattern], encipher_words: bool) -> list[TimeSegment]:
   """Creates a list of audio segments to filter out based on a list of words and filters."""
-  return [AudioSegment(word.start, word.end) for word in words
+  return [TimeSegment(word.start, word.end) for word in words
           if _matches_any(word.word, filters, encipher_words)]
 
 def _filter_text(text: str, filters: list[re.Pattern], replacement_text: str, encipher_text: bool) -> tuple[str, int]:
@@ -104,8 +84,8 @@ def _filter_text(text: str, filters: list[re.Pattern], replacement_text: str, en
   Returns the filtered string and the number of matches that were found.
   """
   if encipher_text:
-    text = _encipher(text)
-    replacement_text = _encipher(replacement_text)
+    text = encipher(text)
+    replacement_text = encipher(replacement_text)
   total_matches = 0
   for filter in filters:
     matches = len(filter.findall(text))
@@ -113,5 +93,5 @@ def _filter_text(text: str, filters: list[re.Pattern], replacement_text: str, en
       text = filter.sub(replacement_text, text)
       total_matches += matches
   if encipher_text:
-    text = _decipher(text)
+    text = decipher(text)
   return text, total_matches
