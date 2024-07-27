@@ -12,7 +12,7 @@ class Subtitle:
   end: float
   words: list[Word]
 
-def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
+def layout_subtitles(segments: list[Segment], respect_segments: bool) -> list[Subtitle]:
   """Transforms a list of transcription segments into a list of subtitles."""
   # Conventions to follow: https://engagemedia.org/help/best-practices-for-online-subtitling/
   # - Max = 2 lines
@@ -25,7 +25,7 @@ def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
   # - 40 characters per line
   # - >=1.5, <=6 seconds per subtitle
   # - 0.125 second gap between subtitles
-  sentences = _group_sentences(segments)
+  sentences = [s.words for s in segments] if respect_segments else _group_sentences(segments)
   subtitles = []
   subtitle_char_count = 0
   subtitle_words = []
@@ -60,11 +60,6 @@ def _group_sentences(segments: list[Segment]) -> list[list[Word]]:
   sentences = []
   current_sentence = []
   for segment in segments:
-    # Try to detect when lyrics were transcribed without punctuation between lines
-    if len(current_sentence) > 0 and len(current_sentence) < 10 and segment.words[0].word.lstrip()[0].isupper():
-      sentences.append(current_sentence)
-      current_sentence = []
-
     for word in segment.words:
       current_sentence.append(word)
       text = word.word
@@ -175,6 +170,8 @@ def _parse_arguments() -> argparse.Namespace:
                            '\'auto\' selects the fasted option that is supported by the device used. (Default: auto)')
   parser.add_argument('--whisper-device', default='auto', choices=['auto','cpu','cuda'],
                       help='The compute device to use when running the Whisper model. (Default: auto)')
+  parser.add_argument('--respect-segments', default=False, action='store_true',
+                      help="Use the segment boundaries from the Whisper transcription. This is sometimes useful for videos that primarily contain lyrics.")
   # parser.add_argument('--whisper-silence-ms', default=-1, type=int,
   #                     help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
   #                          '(Default: -1)')
@@ -221,7 +218,7 @@ def main():
   if len(filters) > 0:
     print(f"Found {matches} matches for filters")
 
-  subtitles = layout_subtitles(segments)
+  subtitles = layout_subtitles(segments, respect_segments=args.respect_segments)
   script = create_subtitles_script(subtitles)
 
   add_subtitles_to_video(filtered_file, script, output_file)
