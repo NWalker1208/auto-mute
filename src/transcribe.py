@@ -33,7 +33,7 @@ def transcribe(input_file: str, options: TranscribeOptions, ignore_cache: bool =
     vad_filter=options.vad_options is not None,
     vad_parameters=options.vad_options,
     hallucination_silence_threshold=options.hallucination_silence_threshold,
-    hotwords=' '.join(options.hotwords) if options.hotwords is not None else None,
+    hotwords=' '.join(options.hotwords) if len(options.hotwords) > 0 else None,
     word_timestamps=True,
   )
 

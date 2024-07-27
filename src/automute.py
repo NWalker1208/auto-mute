@@ -85,7 +85,7 @@ def main():
       device=args.whisper_device,
       compute_type=args.whisper_compute_type,
       condition_on_previous_text='distil' not in args.whisper_model, # Distil models seem prone to repeating themselves
-      hotwords=[decipher(word) if args.encipher_words else word for f in filters for word in [f.pattern[2:-2]]],
+      # hotwords=[decipher(word) if args.encipher_words else word for f in filters for word in [f.pattern[2:-2]]],
       # vad_filter=args.whisper_silence_ms >= 0,
       # vad_parameters=dict(
       #   min_silence_duration_ms=args.whisper_silence_ms
