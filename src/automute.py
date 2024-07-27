@@ -1,4 +1,5 @@
 import argparse, pathlib
+from cli import confirm
 
 def _parse_arguments() -> argparse.Namespace:
   parser = argparse.ArgumentParser(
@@ -51,17 +52,6 @@ def _get_output_file_path(input_file: str) -> str:
   input_path = pathlib.Path(input_file)
   return str(input_path.with_stem(input_path.stem + "-filtered"))
 
-def _confirm(prompt: str, default: bool | None = None) -> bool:
-  """Prompts the user to confirm some action."""
-  options = "[y/n]" if default is None else ("[Y/n]" if default else "[y/N]")
-  answer = None
-  while answer not in ["yes", "y", "no", "n"] and (answer != "" or default is None):
-    answer = input(f"{prompt} {options} ").lower()
-  if answer == "":
-    return default
-  else:
-    return answer in ["yes", "y"]
-
 def main():
   args = _parse_arguments()
 
@@ -71,7 +61,7 @@ def main():
   from filters import compile_filters, find_time_segments_to_filter
   
   filters = compile_filters(args.filter_word, args.filter_file)
-  if len(filters) == 0 and not _confirm("No filters configured. Continue anyways?", default=True):
+  if len(filters) == 0 and not confirm("No filters configured. Continue anyways?", default=True):
     exit(0)
     
   from transcribe import transcribe, TranscribeOptions
