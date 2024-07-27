@@ -76,6 +76,7 @@ def main():
     
   from transcribe import transcribe, TranscribeOptions
   from audio import filter_audio
+  from cipher import decipher
 
   text_segments = transcribe(
     input_file,
@@ -84,7 +85,7 @@ def main():
       device=args.whisper_device,
       compute_type=args.whisper_compute_type,
       condition_on_previous_text='distil' not in args.whisper_model, # Distil models seem prone to repeating themselves
-      hotwords=[f.pattern[2:-2] for f in filters],
+      hotwords=[decipher(word) if args.encipher_words else word for f in filters for word in [f.pattern[2:-2]]],
       # vad_filter=args.whisper_silence_ms >= 0,
       # vad_parameters=dict(
       #   min_silence_duration_ms=args.whisper_silence_ms
