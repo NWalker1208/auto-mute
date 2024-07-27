@@ -147,7 +147,8 @@ def main():
 
   video_file = "./media/missile.mp4"
   segments = transcribe(video_file, TranscribeOptions(model="large-v3"))
-  segments = filter_transcription(segments, filter_list, '[__]', True)
+  segments, matches = filter_transcription(segments, filter_list, '[__]', True)
+  print(f"Found {matches} matches for filters")
   subtitles = layout_subtitles(segments)
   write_subtitles(subtitles, "./media/subtitles.ssa")
 
