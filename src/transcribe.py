@@ -38,10 +38,10 @@ def transcribe(input_file: str, options: TranscribeOptions, ignore_cache: bool =
   )
 
   # Check cache
-  cache_key = _get_cache_key(input_file, {
-    "model_kwargs": model_kwargs,
-    "transcribe_kwargs": transcribe_kwargs
-  })
+  cache_key = _get_cache_key(input_file, dict(
+    model_kwargs=model_kwargs,
+    transcribe_kwargs=transcribe_kwargs,
+  ))
   if not ignore_cache:
     cached = _get_cached_transcription(cache_key)
     if cached is not None:
@@ -88,6 +88,10 @@ def _get_file_sha1_digest(path: str) -> str:
 
 def _get_cache_key(path: str, settings: dict) -> tuple[str, dict]:
   """Computes the cache key for a given path with the given settings. Returns both a hashkey and a dictionary."""
+  if settings["transcribe_kwargs"]["hotwords"]:
+    new_kwargs = {**settings["transcribe_kwargs"]}
+    new_kwargs["hotwords"] = hashlib.sha1(new_kwargs["hotwords"].encode()).hexdigest()
+    settings["transcribe_kwargs"] = new_kwargs
   key_dict = dict(
     input_file_sha1=_get_file_sha1_digest(path),
     settings=settings
