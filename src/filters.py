@@ -39,10 +39,10 @@ def filter_transcription(transcription_segments: list[Segment], filters: list[re
   Applies the list of filters to a transcription, replacing any matches with the given replacement string.
   Returns the filtered transcription and the number of matches that were found.
   """
-  new_segments = []
+  new_segments: list[Segment] = []
   total_matches = 0
   for segment in transcription_segments:
-    new_words = []
+    new_words: list[Word] = []
     for word in segment.words:
       filtered_word, matches = _filter_text(word.word, filters, replacement_text, encipher_text)
       total_matches += matches
@@ -57,7 +57,7 @@ def filter_transcription(transcription_segments: list[Segment], filters: list[re
       seek=segment.seek,
       start=segment.start,
       end=segment.end,
-      text=''.join(w.text for w in new_words),
+      text=''.join(w.word for w in new_words),
       tokens=segment.tokens,
       temperature=segment.temperature,
       avg_logprob=segment.avg_logprob,
