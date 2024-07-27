@@ -5,6 +5,7 @@ import ffmpeg
 import os, pathlib, argparse
 from cli import confirm
 from dataclasses import dataclass
+import math
 
 @dataclass
 class Subtitle:
@@ -32,8 +33,10 @@ def layout_subtitles(segments: list[Segment], respect_segments: bool) -> list[Su
   for sentence in sentences:
     if len(subtitle_words) > 0:
       start = subtitle_words[0].start
-      end = max(start + 1.5, subtitle_words[-1].end)
-      if end < sentence[0].start - 0.125:
+      next_start = sentence[0].start
+      if start + 1.5 < next_start - 0.125:
+        end = max(start + 1.5, subtitle_words[-1].end)
+        end = min(end, next_start - 0.125)
         subtitles.append(Subtitle(start, end, subtitle_words))
         subtitle_words = []
         subtitle_char_count = 0
@@ -175,6 +178,8 @@ def _parse_arguments() -> argparse.Namespace:
   # parser.add_argument('--whisper-silence-ms', default=-1, type=int,
   #                     help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
   #                          '(Default: -1)')
+  parser.add_argument('--min-logprob', default=-1.2, type=float,
+                      help="The minimum average log probabilty that a transcription segment must have to be included in subtitles. (Default: -1.2)")
   parser.add_argument('--ignore-cached-transcriptions', default=False, action='store_true',
                       help='Ignore any cached transcriptions.')
   return parser.parse_args()
@@ -188,6 +193,9 @@ def _get_output_file_path(input_file: str) -> str:
   """Creates an output file path from an input file path."""
   input_path = pathlib.Path(input_file)
   return str(input_path.with_stem(input_path.stem + "-subtitled").with_suffix(".mkv"))
+
+def _avg_word_log_prob(segment: Segment) -> float:
+  return sum(math.log10(word.probability) for word in segment.words) / len(segment.words)
 
 def main():
   args = _parse_arguments()
@@ -213,6 +221,8 @@ def main():
     ),
     ignore_cache=args.ignore_cached_transcriptions,
   )
+  min_logprob = args.min_logprob
+  segments = [s for s in segments if s.avg_logprob >= min_logprob and _avg_word_log_prob(s) >= min_logprob]
 
   segments, matches = filter_transcription(segments, filters, '[__]', args.encipher_words)
   if len(filters) > 0:
