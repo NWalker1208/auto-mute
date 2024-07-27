@@ -9,7 +9,7 @@ Uses OpenAI Whisper to transcribe audio and ffmpeg to extract audio and apply fi
 
 > :warning: Currently only tested in WSL.
 
-Install the requirements listed in `requirements.txt`, then run `python src/main.py --help` for usage information.
+Install the requirements listed in `requirements.txt`, then run `python src/automute.py --help` for usage information.
 
 You may find the pip package `pytubefix` handy for downloading YouTube videos that you want to filter:
 ```bash
