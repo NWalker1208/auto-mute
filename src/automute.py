@@ -29,9 +29,9 @@ def _parse_arguments() -> argparse.Namespace:
                            '\'auto\' selects the fasted option that is supported by the device used. (Default: auto)')
   parser.add_argument('--whisper-device', default='auto', choices=['auto','cpu','cuda'],
                       help='The compute device to use when running the Whisper model. (Default: auto)')
-  parser.add_argument('--whisper-silence-ms', default=-1, type=int,
-                      help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
-                           '(Default: -1)')
+  # parser.add_argument('--whisper-silence-ms', default=-1, type=int,
+  #                     help='The minimum duration in milliseconds for an audio segment with no detected speech to be skipped during transcription. -1 to disable. ' +
+  #                          '(Default: -1)')
   parser.add_argument('--ignore-cached-transcriptions', default=False, action='store_true',
                       help='Ignore any cached transcriptions.')
   return parser.parse_args()
@@ -74,22 +74,23 @@ def main():
   if len(filters) == 0 and not _confirm("No filters configured. Continue anyways?", default=True):
     exit(0)
     
-  from transcribe import transcribe
+  from transcribe import transcribe, TranscribeOptions
   from audio import filter_audio
 
   text_segments = transcribe(
-    input_file, args.whisper_model,
-    whisper_kwargs=dict(
-      compute_type = args.whisper_compute_type,
-      device = args.whisper_device
+    input_file,
+    TranscribeOptions(
+      model=args.whisper_model,
+      device=args.whisper_device,
+      compute_type=args.whisper_compute_type,
+      condition_on_previous_text='distil' not in args.whisper_model, # Distil models seem prone to repeating themselves
+      hotwords=[f.source_word for f in filters],
+      # vad_filter=args.whisper_silence_ms >= 0,
+      # vad_parameters=dict(
+      #   min_silence_duration_ms=args.whisper_silence_ms
+      # ) if args.whisper_silence_ms >= 0 else dict()
     ),
-    transcribe_kwargs=dict(
-      vad_filter=args.whisper_silence_ms >= 0,
-      vad_parameters=dict(
-        min_silence_duration_ms=args.whisper_silence_ms
-      ) if args.whisper_silence_ms >= 0 else dict()
-    ),
-    ignore_cache=args.ignore_cached_transcriptions
+    ignore_cache=args.ignore_cached_transcriptions,
   )
 
   filter_segments = find_time_segments_to_filter(text_segments, filters, args.encipher_words)
