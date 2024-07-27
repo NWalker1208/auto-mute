@@ -1,15 +1,45 @@
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment
+from faster_whisper.vad import VadOptions
 from tqdm import tqdm
 import hashlib, json, os
 from strong_typing import serialization
+from typing import NamedTuple, Optional
 
-def transcribe(input_file: str, model_name_or_path: str, whisper_kwargs: dict = {}, transcribe_kwargs: dict = {}, ignore_cache: bool = False) -> list[Segment]:
+class TranscribeOptions(NamedTuple):
+  # WhisperModel parameters
+  model: str = 'small.en'
+  device: str = 'auto'
+  compute_type: str = 'auto'
+  cpu_threads: int = 8
+  # transcribe() parameters
+  language: Optional[str] = None
+  condition_on_previous_text: bool = True
+  vad_options: Optional[VadOptions] = None
+  hallucination_silence_threshold: Optional[float] = None
+  hotwords: list[str] = []
+
+def transcribe(input_file: str, options: TranscribeOptions, ignore_cache: bool = False) -> list[Segment]:
   """Transcribes the given input file using the specified Whisper model and settings."""
+  # Setup kwargs for cache search
+  model_kwargs = dict(
+    model_size_or_path=options.model,
+    device=options.device,
+    compute_type=options.compute_type,
+  )
+  transcribe_kwargs = dict(
+    language=options.language,
+    condition_on_previous_text=options.condition_on_previous_text,
+    vad_filter=options.vad_options is not None,
+    vad_parameters=options.vad_options,
+    hallucination_silence_threshold=options.hallucination_silence_threshold,
+    hotwords=' '.join(options.hotwords) if options.hotwords is not None else None,
+    word_timestamps=True,
+  )
+
   # Check cache
   cache_key = _get_cache_key(input_file, {
-    "model_name_or_path": model_name_or_path,
-    "whisper_kwargs": whisper_kwargs,
+    "model_kwargs": model_kwargs,
     "transcribe_kwargs": transcribe_kwargs
   })
   if not ignore_cache:
@@ -18,18 +48,21 @@ def transcribe(input_file: str, model_name_or_path: str, whisper_kwargs: dict = 
       print("Found cached transcription")
       return cached
   
-  # Transcribe audio
-  model = WhisperModel(model_name_or_path, **whisper_kwargs)
+  # Prepare model and segments generator
+  model = WhisperModel(
+    cpu_threads=options.cpu_threads,
+    **model_kwargs
+  )
   segments_generator, info = model.transcribe(
     audio=input_file,
-    word_timestamps=True,
     **transcribe_kwargs
   )
   
+  # Transcribe audio
   # https://github.com/SYSTRAN/faster-whisper/issues/80#issuecomment-1502174272
   total_duration = round(info.duration, 2)
   segments = []
-  with tqdm(desc="Transcribing audio", total=total_duration, unit=" seconds") as progress:
+  with tqdm(desc="Transcribing audio", total=total_duration, unit=" seconds of audio") as progress:
     for segment in segments_generator:
       progress.update(segment.end - progress.n)
       segments.append(segment)
@@ -55,10 +88,10 @@ def _get_file_sha1_digest(path: str) -> str:
 
 def _get_cache_key(path: str, settings: dict) -> tuple[str, dict]:
   """Computes the cache key for a given path with the given settings. Returns both a hashkey and a dictionary."""
-  key_dict = {
-    "input_file_sha1": _get_file_sha1_digest(path),
-    "settings": settings
-  }
+  key_dict = dict(
+    input_file_sha1=_get_file_sha1_digest(path),
+    settings=settings
+  )
   key_hash = hashlib.sha1(json.dumps(key_dict).encode()).hexdigest()
   return key_hash, key_dict
 
