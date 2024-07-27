@@ -1,11 +1,18 @@
 from faster_whisper.transcribe import Segment, Word
 import re
-import transcribe
-from filters import compile_filters, filter_text
+from transcribe import transcribe, TranscribeOptions
+from filters import compile_filters, filter_transcription
 import ffmpeg
 import pathlib
+from dataclasses import dataclass
 
-def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
+@dataclass
+class Subtitle:
+  start: float
+  end: float
+  words: list[Word]
+
+def layout_subtitles(segments: list[Segment]) -> list[Subtitle]:
   """Transforms a list of transcription segments into a list of subtitles."""
   # Conventions to follow: https://engagemedia.org/help/best-practices-for-online-subtitling/
   # - Max = 2 lines
@@ -22,23 +29,30 @@ def layout_subtitles(segments: list[Segment]) -> list[list[Word]]:
   sentences = _group_sentences(words)
   subtitles = []
   subtitle_char_count = 0
-  subtitle = []
+  subtitle_words = []
   for sentence in sentences:
-    for word in sentence:
-      subtitle.append(word)
-      subtitle_char_count += len(word.word)
-
-      if subtitle_char_count > 80:
-        # TODO: Find smarter place to split long sentences
-        subtitles.append(subtitle)
-        subtitle = []
+    if len(subtitle_words) > 0:
+      start = subtitle_words[0].start
+      end = max(start + 1.5, subtitle_words[-1].end)
+      if end < sentence[0].start - 0.125:
+        subtitles.append(Subtitle(start, end, subtitle_words))
+        subtitle_words = []
         subtitle_char_count = 0
-    
-    if len(subtitle) > 0:
-      subtitles.append(subtitle)
-      subtitle = []
-      subtitle_char_count = 0
+
+    for word in sentence:
+      if subtitle_char_count + len(word.word) > 80:
+        subtitles.append(Subtitle(subtitle_words[0].start, word.start, subtitle_words))
+        subtitle_words = []
+        subtitle_char_count = 0
+
+      subtitle_words.append(word)
+      subtitle_char_count += len(word.word)
     # TODO: Skip subtitles/sentences/phrases with low average probability
+  
+  if len(subtitle_words) > 0:
+    start = subtitle_words[0].start
+    end = max(start + 1.5, subtitle_words[-1].end)
+    subtitles.append(Subtitle(start, end, subtitle_words))
 
   return subtitles
 
@@ -78,15 +92,15 @@ WORD_FORMAT = "{{\\1a&H{alpha:02X}&}}{text}{{\\1a}}"
 # mov_text (i.e., mp4) does not seem to support font color at all.
 # Only SubStation Alpha seems to support opacity.
 # It seems like ffmpeg likes to have all of the possible fields present, at least when converting from SSA to SRT.
-def write_subtitles(subtitles: list[list[Word]], path: str):
+def write_subtitles(subtitles: list[Subtitle], path: str):
   with open(path, 'w') as file:
     file.write(FILE_HEADER)
     for subtitle in subtitles:
-      start = _seconds_to_ts(subtitle[0].start)
-      end = _seconds_to_ts(subtitle[-1].end)
+      start = _seconds_to_ts(subtitle.start)
+      end = _seconds_to_ts(subtitle.end)
       text = ""
       first = True
-      for word in subtitle:
+      for word in subtitle.words:
         word_text = word.word
         if first:
           word_text = word_text.lstrip()
@@ -112,15 +126,6 @@ def _probability_to_alpha(probability: float) -> int:
   lerp = 1.0 - min(max((probability - MIN_PROBABILITY) / (MAX_PROBABILITY - MIN_PROBABILITY), 0.0), 1.0)
   return MIN_ALPHA + int(lerp * (MAX_ALPHA - MIN_ALPHA))
 
-def filter_subtitles(subtitles: list[list[Word]], filters: list[re.Pattern], replacement: str, encipher_text: bool) -> list[list[Word]]:
-  new_subtitles = []
-  for subtitle in subtitles:
-    new_words = []
-    for word in subtitle:
-      new_words.append(Word(word.start, word.end, filter_text(word.word, filters, replacement, encipher_text), word.probability))
-    new_subtitles.append(new_words)
-  return new_subtitles
-
 def add_subtitles_to_video(video_file: str, subtitle_file: str, output_file: str):
   av = ffmpeg.input(video_file)
   subtitles = ffmpeg.input(subtitle_file)
@@ -138,19 +143,12 @@ def _get_output_file_path(input_file: str) -> str:
   return str(input_path.with_stem(input_path.stem + "-subtitled").with_suffix(".mkv"))
 
 def main():
-  video_file = "./media/missile.mp4"
-  segments = transcribe.transcribe(video_file, "large-v3", whisper_kwargs={
-      "compute_type": "auto",
-      "device": "auto"
-    },
-    transcribe_kwargs={
-      "vad_filter": False,
-      "vad_parameters": {}
-    }
-  )
-  subtitles = layout_subtitles(segments)
   filter_list = compile_filters([], ['default_wordlist_en.txt'])
-  subtitles = filter_subtitles(subtitles, filter_list, '[__]', True)
+
+  video_file = "./media/missile.mp4"
+  segments = transcribe(video_file, TranscribeOptions(model="large-v3"))
+  segments = filter_transcription(segments, filter_list, '[__]', True)
+  subtitles = layout_subtitles(segments)
   write_subtitles(subtitles, "./media/subtitles.ssa")
 
   output_file = _get_output_file_path(video_file)
