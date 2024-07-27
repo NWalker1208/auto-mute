@@ -15,6 +15,6 @@ with open("default_wordlist_en.txt", "w") as dest:
     for line in source:
       word: str = line.decode('utf8').rstrip()
       if word.isalpha():
-        dest.write("\\b" + encipher(word) + "\\b\n")
+        dest.write(encipher(word) + "\n")
         count += 1
 print(f"Created wordlist with {count} words")
