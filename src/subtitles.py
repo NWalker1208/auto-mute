@@ -3,7 +3,7 @@ import re
 from transcribe import transcribe, TranscribeOptions
 from filters import compile_filters, filter_transcription
 import ffmpeg
-import pathlib
+import os, pathlib
 from dataclasses import dataclass
 
 @dataclass
@@ -92,21 +92,21 @@ WORD_FORMAT = "{{\\1a&H{alpha:02X}&}}{text}{{\\1a}}"
 # mov_text (i.e., mp4) does not seem to support font color at all.
 # Only SubStation Alpha seems to support opacity.
 # It seems like ffmpeg likes to have all of the possible fields present, at least when converting from SSA to SRT.
-def write_subtitles(subtitles: list[Subtitle], path: str):
-  with open(path, 'w') as file:
-    file.write(FILE_HEADER)
-    for subtitle in subtitles:
-      start = _seconds_to_ts(subtitle.start)
-      end = _seconds_to_ts(subtitle.end)
-      text = ""
-      first = True
-      for word in subtitle.words:
-        word_text = word.word
-        if first:
-          word_text = word_text.lstrip()
-          first = False
-        text += WORD_FORMAT.format(alpha=_probability_to_alpha(word.probability), text=word_text)
-      file.write(LINE_FORMAT.format(start=start, end=end, text=text.strip()))
+def create_subtitles_script(subtitles: list[Subtitle]) -> str:
+  contents = [FILE_HEADER]
+  for subtitle in subtitles:
+    start = _seconds_to_ts(subtitle.start)
+    end = _seconds_to_ts(subtitle.end)
+    text = ""
+    first = True
+    for word in subtitle.words:
+      word_text = word.word
+      if first:
+        word_text = word_text.lstrip()
+        first = False
+      text += WORD_FORMAT.format(alpha=_probability_to_alpha(word.probability), text=word_text)
+    contents.append(LINE_FORMAT.format(start=start, end=end, text=text.strip()))
+  return ''.join(contents)
 
 def _seconds_to_ts(seconds: float) -> str:
   centiseconds = round(seconds * 100)
@@ -126,11 +126,18 @@ def _probability_to_alpha(probability: float) -> int:
   lerp = 1.0 - min(max((probability - MIN_PROBABILITY) / (MAX_PROBABILITY - MIN_PROBABILITY), 0.0), 1.0)
   return MIN_ALPHA + int(lerp * (MAX_ALPHA - MIN_ALPHA))
 
-def add_subtitles_to_video(video_file: str, subtitle_file: str, output_file: str):
+def add_subtitles_to_video(video_file: str, subtitles_script: str, output_file: str):
+  if os.path.isfile(output_file):
+    # TODO: Confirm before continuing
+    os.remove(output_file)
   av = ffmpeg.input(video_file)
-  subtitles = ffmpeg.input(subtitle_file)
-  stream = ffmpeg.output(av, subtitles, output_file, c="copy", loglevel="warning")
-  ffmpeg.run(stream)
+  subtitles = ffmpeg.input('pipe:')
+  stream = ffmpeg.output(av, subtitles, output_file, c="copy", loglevel="error")
+  process = ffmpeg.run_async(stream, pipe_stdin=True)
+  process.stdin.write(subtitles_script.encode())
+  process.stdin.close()
+  if process.wait() != 0:
+    print("Error from ffmpeg")
 
 def _get_filtered_video_path(input_file: str) -> str:
   """Creates an output file path from an input file path."""
@@ -150,10 +157,10 @@ def main():
   segments, matches = filter_transcription(segments, filter_list, '[__]', True)
   print(f"Found {matches} matches for filters")
   subtitles = layout_subtitles(segments)
-  write_subtitles(subtitles, "./media/subtitles.ssa")
+  script = create_subtitles_script(subtitles)
 
   output_file = _get_output_file_path(video_file)
-  add_subtitles_to_video(_get_filtered_video_path(video_file), "./media/subtitles.ssa", output_file)
+  add_subtitles_to_video(_get_filtered_video_path(video_file), script, output_file)
   print("Added subtitles to video")
 
   # TODO: https://www.bannerbear.com/blog/how-to-add-subtitles-to-a-video-file-using-ffmpeg/#hard-subtitles-vs-soft-subtitles
