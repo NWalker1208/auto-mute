@@ -21,7 +21,9 @@ def _compile_filters_from_file(file_path: str) -> list[re.Pattern]:
     for line in file:
       word = line.rstrip()
       if len(word) > 0 and not word.startswith("#"):
-        words.append(re.compile(f'\\b{word}\\b', re.IGNORECASE))
+        pattern = re.compile(f'\\b{word}\\b', re.IGNORECASE)
+        pattern.source_word = word
+        words.append(pattern)
     return words
 
 def find_time_segments_to_filter(transcription_segments: list[Segment], filters: list[re.Pattern], encipher_words: bool) -> list[TimeSegment]:
