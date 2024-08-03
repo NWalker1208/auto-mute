@@ -4,3 +4,5 @@
 /media/
 .transcription_cache/
 default_wordlist_en.txt
+
+node_modules/
